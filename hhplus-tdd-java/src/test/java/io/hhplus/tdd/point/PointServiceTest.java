@@ -99,5 +99,52 @@ class PointServiceTest {
 
     }
 
+    @Test
+    @DisplayName("특정 유저의 포인트를 사용할 수 있다.")
+    void spendUserPoints() {
+        // given
+        long userId = 1L;
+        long amount = 100000L;
+        long spendAmount = 30000L;
+        // when
+        when(userPointTable.selectById(userId)).thenReturn(new UserPoint(userId, amount, System.currentTimeMillis()));
+
+        // when
+        UserPoint userPoint = pointService.spendUserPoints(userId, spendAmount);
+
+        // then
+        assertThat(userPoint.point()).isEqualTo(amount - spendAmount);
+    }
+
+    @Test
+    @DisplayName("특정 유저가 가진 포인트 이상의 포인트를 사용할 수 없다.")
+    void spentUserOverPoints() {
+        // given
+        long userId = 1L;
+        long amount = 10000L;
+        long overPayAmount = 20000L;
+
+        when(userPointTable.selectById(userId)).thenReturn(new UserPoint(userId, amount, System.currentTimeMillis()));
+
+        // when, then
+        assertThatThrownBy(() -> pointService.spendUserPoints(userId, overPayAmount)).isInstanceOf(IllegalArgumentException.class);
+
+    }
+
+    @Test
+    @DisplayName("특정 유저가 가진 0 이하의 포인트를 사용할 수 없다.")
+    void spentUserMinusPoints() {
+        // given
+        long userId = 1L;
+        long amount = 10000L;
+        long minusAmount = -20000L;
+
+        when(userPointTable.selectById(userId)).thenReturn(new UserPoint(userId, amount, System.currentTimeMillis()));
+
+        // when, then
+        assertThatThrownBy(() -> pointService.spendUserPoints(userId, minusAmount)).isInstanceOf(IllegalArgumentException.class);
+
+    }
+
 }
 
