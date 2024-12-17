@@ -55,7 +55,23 @@ public class PointServiceImpl implements PointService{
     @Override
     public UserPoint chargeUserPoints(long userId, long amount){
 
-        return null;
+        // userId 유효값 확인
+
+        // user Point를 찾지 못할 경우 예외처리
+        UserPoint user = userPointTable.selectById(userId);
+
+        // 충전 amount가 0원 이하일 때 예외처리
+
+        // point가 1,000,000원 이상일 때 예외처리
+        long point = user.point() + amount;
+
+        // user point 충전
+        UserPoint addUserPoint = userPointTable.insertOrUpdate(userId, point);
+
+        // user history 기록
+        pointHistoryTable.insert(addUserPoint.id(), addUserPoint.point(), TransactionType.CHARGE, addUserPoint.updateMillis());
+
+        return addUserPoint;
     }
 
     /**

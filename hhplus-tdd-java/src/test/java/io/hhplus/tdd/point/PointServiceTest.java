@@ -10,6 +10,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,8 +22,12 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class PointServiceTest {
 
+    private static final Logger log = LoggerFactory.getLogger(PointServiceTest.class);
     @Mock
     private UserPointTable userPointTable;
+
+    @Mock
+    private PointHistoryTable pointHistoryTable;
 
     @InjectMocks
     private PointServiceImpl pointService;
@@ -48,14 +54,49 @@ class PointServiceTest {
     }
 
     @Test
-    @DisplayName("특정 유저 ID에 포인트를 조회할 수 없을 때 실패한다.")
-    void shouldFailWhenUnableToRetrieveUserPoints() {
+    @DisplayName("특정 유저의 포인트를 충전할 수 있다.")
+    void chargeUserPoints() {
         // given
-        when(userPointTable.selectById(1L)).thenReturn(new UserPoint(1L, 10000L, System.currentTimeMillis()));
+        long userId = 1L;
+        long amount = 10000L;
+        when(userPointTable.selectById(userId)).thenReturn(new UserPoint(userId, 0, System.currentTimeMillis()));
+        when(userPointTable.insertOrUpdate(userId, amount)).thenReturn(new UserPoint(userId, amount, System.currentTimeMillis()));
+
         // when
-        pointService.getUserPoints(1L);
+        UserPoint userPoint = pointService.chargeUserPoints(userId, amount);
+
         // then
-        assertThat(userPointTable.selectById(2L)).isEqualTo(null);
+        assertThat(userPoint.point()).isEqualTo(10000L);
+
+    }
+    @Test
+    @DisplayName("포인트 충전 시에 결과값이 1_000_000원을 초과할 경우, 요청은 실패한다.")
+    void shouldFailWhenOverChargeUserPoints() {
+        // given
+        long userId = 1L;
+        long amount = 1000000L;
+        when(userPointTable.selectById(userId)).thenReturn(new UserPoint(userId, 10000, System.currentTimeMillis()));
+        when(userPointTable.insertOrUpdate(userId, amount)).thenReturn(new UserPoint(userId, amount, System.currentTimeMillis()));
+
+        // when, then
+        assertThatThrownBy(() -> pointService.chargeUserPoints(userId, amount)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("특정 유저의 0원 이하의 포인트를 충전할 수 없다.")
+    void shouldFailWhenChargeUserMinusPoints() {
+        // given
+        long userId = 1L;
+        long minusAmount = -90000L;
+        when(userPointTable.selectById(userId)).thenReturn(new UserPoint(userId, 0, System.currentTimeMillis()));
+        when(userPointTable.insertOrUpdate(userId, minusAmount)).thenReturn(new UserPoint(userId, minusAmount, System.currentTimeMillis()));
+
+        UserPoint userPoint = pointService.chargeUserPoints(userId, minusAmount);
+        log.info(userPoint.toString());
+
+        // when, then
+        assertThatThrownBy(() -> pointService.chargeUserPoints(userId, minusAmount)).isInstanceOf(IllegalArgumentException.class);
+
     }
 
 }
