@@ -118,7 +118,7 @@ class PointServiceTest {
 
     @Test
     @DisplayName("특정 유저가 가진 포인트 이상의 포인트를 사용할 수 없다.")
-    void spentUserOverPoints() {
+    void shouldFailWhenSpentUserOverPoints() {
         // given
         long userId = 1L;
         long amount = 10000L;
@@ -132,8 +132,8 @@ class PointServiceTest {
     }
 
     @Test
-    @DisplayName("특정 유저가 가진 0 이하의 포인트를 사용할 수 없다.")
-    void spentUserMinusPoints() {
+    @DisplayName("특정 유저가 가진 0원 이하의 포인트를 사용할 수 없다.")
+    void shouldFailWhenSpentUserMinusPoints() {
         // given
         long userId = 1L;
         long amount = 10000L;
@@ -144,6 +144,34 @@ class PointServiceTest {
         // when, then
         assertThatThrownBy(() -> pointService.spendUserPoints(userId, minusAmount)).isInstanceOf(IllegalArgumentException.class);
 
+    }
+
+    @Test
+    @DisplayName("특정 유저의 포인트 충전/이용 내역을 조회할 수 있다.")
+    void getUserPointHistory() {
+        // given
+        long cursor = 0;
+        when(userPointTable.selectById(1L)).thenReturn(new UserPoint(1L, 10000L, System.currentTimeMillis()));
+        List<PointHistory> historyList = List.of(
+                new PointHistory(++cursor, 1L, 3000L, TransactionType.CHARGE, System.currentTimeMillis()),
+                new PointHistory(++cursor, 1L, 1000L, TransactionType.USE, System.currentTimeMillis())
+        );
+
+        when(pointHistoryTable.selectAllByUserId(1L)).thenReturn(historyList);
+
+        // when, then
+        assertThat(pointService.getUserPointHistory(1L).size()).isEqualTo(2);
+
+    }
+    @Test
+    @DisplayName("포인트 충전/이용 내역을 조회 시 특정 유저가 존재하지 않으면 실패한다.")
+    void shouldFailWhenUserDoesNotExistGetUserPointHistory() {
+        // given
+        long cursor = 0;
+        when(userPointTable.selectById(2L)).thenReturn(null);
+
+        // when, then
+        assertThatThrownBy(() -> pointService.getUserPointHistory(2L)).isInstanceOf(IllegalArgumentException.class);
     }
 
 }

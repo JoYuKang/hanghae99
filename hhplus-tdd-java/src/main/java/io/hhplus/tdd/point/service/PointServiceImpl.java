@@ -25,12 +25,12 @@ public class PointServiceImpl implements PointService{
      */
     @Override
     public UserPoint getUserPoints(long userId){
-        // userId 유효값 확인
-        UserPoint userPoint = userPointTable.selectById(userId);
-        if (userPoint == null) throw new IllegalArgumentException();
-        // user Point를 찾지 못할 경우 예외처리
 
-        return userPointTable.selectById(userId);
+        UserPoint user = userPointTable.selectById(userId);
+        // user 를 찾지 못할 경우 예외처리
+        if (user == null) throw new IllegalArgumentException();
+
+        return user;
     }
 
     /**
@@ -42,7 +42,12 @@ public class PointServiceImpl implements PointService{
     @Override
     public List<PointHistory> getUserPointHistory(long userId){
 
-        return null;
+        // user 확인
+        userPointTable.selectById(userId);
+        // user Point를 찾지 못할 경우 예외처리
+        if (userPointTable.selectById(userId) == null) throw new IllegalArgumentException();
+
+        return pointHistoryTable.selectAllByUserId(userId);
     }
 
     /**
@@ -84,14 +89,19 @@ public class PointServiceImpl implements PointService{
     @Override
     public UserPoint spendUserPoints(long userId, long amount){
 
-        // userId 유효값 확인
+        // user 확인
         UserPoint user = userPointTable.selectById(userId);
+        if (user == null) throw new IllegalArgumentException();
 
         // 사용 amount가 0원 이하일 때 예외처리
         if (amount < 0) throw new IllegalArgumentException();
+
         // 사용 금액 확인
         long point = user.point() - amount;
+
+        // point는 0원 미만이 될 수 없다.
         if (point < 0) throw new IllegalArgumentException();
+
         // user point 사용
         UserPoint addUserPoint = new UserPoint(userId, point, System.currentTimeMillis());
         userPointTable.insertOrUpdate(addUserPoint.id(), point);
