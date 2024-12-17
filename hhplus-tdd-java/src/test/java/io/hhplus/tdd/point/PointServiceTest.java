@@ -2,6 +2,7 @@ package io.hhplus.tdd.point;
 
 import io.hhplus.tdd.database.PointHistoryTable;
 import io.hhplus.tdd.database.UserPointTable;
+import io.hhplus.tdd.exception.*;
 import io.hhplus.tdd.point.service.PointServiceImpl;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.jupiter.api.DisplayName;
@@ -13,7 +14,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.mockito.Mockito.when;
@@ -44,13 +44,23 @@ class PointServiceTest {
     }
 
     @Test
-    @DisplayName("잘못된 ID 값을 받아 특정 유저 조회에 실패한다.")
+    @DisplayName("잘못된 ID 값을 받을 경우 유저 조회에 실패한다.")
     void shouldFailWhenUserIdIsInvalid() {
+        // given
+        long invalidUserId = -1L;
+
+        // when, then
+        assertThatThrownBy(() -> pointService.getUserPoints(invalidUserId)).isInstanceOf(InvalidUserIdException.class);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 ID 값을 받을 경우 유저 조회에 실패한다.")
+    void shouldFailWhenUserNotFound() {
         // given
         long invalidUserId = 1L;
 
         // when, then
-        assertThatThrownBy(() -> pointService.getUserPoints(invalidUserId)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> pointService.getUserPoints(invalidUserId)).isInstanceOf(UserNotFoundException.class);
     }
 
     @Test
@@ -69,33 +79,59 @@ class PointServiceTest {
         assertThat(userPoint.point()).isEqualTo(10000L);
 
     }
+
     @Test
-    @DisplayName("포인트 충전 시에 결과값이 1_000_000원을 초과할 경우, 요청은 실패한다.")
+    @DisplayName("포인트 충전 시 특정 유저가 존재하지 않을 경우 충전에 실패한다.")
+    void shouldFailWhenUserDoesNotExistGetUserChargePoint() {
+        // given
+        when(userPointTable.selectById(2L)).thenReturn(null);
+
+        // when, then
+        assertThatThrownBy(() -> pointService.chargeUserPoints(2L,1000L)).isInstanceOf(UserNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("포인트 충전 시 잘못된 유저 ID일 경우 충전에 실패한다.")
+    void shouldFailWhenUserInvalidUserIdChargePoint() {
+
+        // when, then
+        assertThatThrownBy(() -> pointService.chargeUserPoints(-2L, 1000L)).isInstanceOf(InvalidUserIdException.class);
+    }
+
+    @Test
+    @DisplayName("포인트 충전 시에 결과값이 1_000_000원을 초과할 경우 포인트를 충전할 수 없다.")
     void shouldFailWhenOverChargeUserPoints() {
         // given
         long userId = 1L;
         long amount = 1000000L;
         when(userPointTable.selectById(userId)).thenReturn(new UserPoint(userId, 10000, System.currentTimeMillis()));
-        when(userPointTable.insertOrUpdate(userId, amount)).thenReturn(new UserPoint(userId, amount, System.currentTimeMillis()));
 
         // when, then
-        assertThatThrownBy(() -> pointService.chargeUserPoints(userId, amount)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> pointService.chargeUserPoints(userId, amount)).isInstanceOf(OverPointChargeFailedException.class);
     }
 
     @Test
-    @DisplayName("특정 유저의 0원 이하의 포인트를 충전할 수 없다.")
+    @DisplayName("충전 포인트가 1_000_000원을 초과할 경우 포인트를 충전할 수 없다.")
+    void shouldFailWhenOverChargeAmount() {
+        // given
+        long userId = 1L;
+        long amount = 1100000L;
+        when(userPointTable.selectById(userId)).thenReturn(new UserPoint(userId, 10000, System.currentTimeMillis()));
+
+        // when, then
+        assertThatThrownBy(() -> pointService.chargeUserPoints(userId, amount)).isInstanceOf(InvalidOverPointAmountException.class);
+    }
+
+    @Test
+    @DisplayName("충전 포인트 0원 미만일 경우 포인트를 충전할 수 없다.")
     void shouldFailWhenChargeUserMinusPoints() {
         // given
         long userId = 1L;
         long minusAmount = -90000L;
         when(userPointTable.selectById(userId)).thenReturn(new UserPoint(userId, 0, System.currentTimeMillis()));
-        when(userPointTable.insertOrUpdate(userId, minusAmount)).thenReturn(new UserPoint(userId, minusAmount, System.currentTimeMillis()));
-
-        UserPoint userPoint = pointService.chargeUserPoints(userId, minusAmount);
-        log.info(userPoint.toString());
 
         // when, then
-        assertThatThrownBy(() -> pointService.chargeUserPoints(userId, minusAmount)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> pointService.chargeUserPoints(userId, minusAmount)).isInstanceOf(MinusPointChargeFailedException.class);
 
     }
 
@@ -108,12 +144,31 @@ class PointServiceTest {
         long spendAmount = 30000L;
         // when
         when(userPointTable.selectById(userId)).thenReturn(new UserPoint(userId, amount, System.currentTimeMillis()));
+        when(userPointTable.insertOrUpdate(userId, amount - spendAmount)).thenReturn(new UserPoint(userId, amount - spendAmount, System.currentTimeMillis()));
 
         // when
         UserPoint userPoint = pointService.spendUserPoints(userId, spendAmount);
 
         // then
         assertThat(userPoint.point()).isEqualTo(amount - spendAmount);
+    }
+
+    @Test
+    @DisplayName("포인트 충전 시 특정 유저가 존재하지 않을 경우 충전에 실패한다.")
+    void shouldFailWhenUserDoesNotExistGetUserSpendPoint() {
+        // given
+        when(userPointTable.selectById(2L)).thenReturn(null);
+
+        // when, then
+        assertThatThrownBy(() -> pointService.spendUserPoints(2L,1000L)).isInstanceOf(UserNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("포인트 충전 시 잘못된 유저 ID일 경우 충전에 실패한다.")
+    void shouldFailWhenUserInvalidUserIdSpendPoint() {
+
+        // when, then
+        assertThatThrownBy(() -> pointService.spendUserPoints(-2L, 1000L)).isInstanceOf(InvalidUserIdException.class);
     }
 
     @Test
@@ -127,22 +182,7 @@ class PointServiceTest {
         when(userPointTable.selectById(userId)).thenReturn(new UserPoint(userId, amount, System.currentTimeMillis()));
 
         // when, then
-        assertThatThrownBy(() -> pointService.spendUserPoints(userId, overPayAmount)).isInstanceOf(IllegalArgumentException.class);
-
-    }
-
-    @Test
-    @DisplayName("특정 유저가 가진 0원 이하의 포인트를 사용할 수 없다.")
-    void shouldFailWhenSpentUserMinusPoints() {
-        // given
-        long userId = 1L;
-        long amount = 10000L;
-        long minusAmount = -20000L;
-
-        when(userPointTable.selectById(userId)).thenReturn(new UserPoint(userId, amount, System.currentTimeMillis()));
-
-        // when, then
-        assertThatThrownBy(() -> pointService.spendUserPoints(userId, minusAmount)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> pointService.spendUserPoints(userId, overPayAmount)).isInstanceOf(OverPointSpendFailedException.class);
 
     }
 
@@ -164,14 +204,21 @@ class PointServiceTest {
 
     }
     @Test
-    @DisplayName("포인트 충전/이용 내역을 조회 시 특정 유저가 존재하지 않으면 실패한다.")
+    @DisplayName("포인트 충전/이용 내역을 조회 시 특정 유저가 존재하지 않을 경우 조회에 실패한다.")
     void shouldFailWhenUserDoesNotExistGetUserPointHistory() {
         // given
-        long cursor = 0;
         when(userPointTable.selectById(2L)).thenReturn(null);
 
         // when, then
-        assertThatThrownBy(() -> pointService.getUserPointHistory(2L)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> pointService.getUserPointHistory(2L)).isInstanceOf(UserNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("포인트 충전/이용 내역을 조회 시 잘못된 유저 ID일 경우 조회에 실패한다.")
+    void shouldFailWhenUserInvalidUserIdPointHistory() {
+
+        // when, then
+        assertThatThrownBy(() -> pointService.getUserPointHistory(-2L)).isInstanceOf(InvalidUserIdException.class);
     }
 
 }
