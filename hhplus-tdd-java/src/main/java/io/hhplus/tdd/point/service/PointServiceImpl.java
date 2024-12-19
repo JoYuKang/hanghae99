@@ -3,6 +3,7 @@ package io.hhplus.tdd.point.service;
 import io.hhplus.tdd.database.PointHistoryTable;
 import io.hhplus.tdd.database.UserPointTable;
 import io.hhplus.tdd.exception.*;
+import io.hhplus.tdd.point.PointConstants;
 import io.hhplus.tdd.point.PointHistory;
 import io.hhplus.tdd.point.TransactionType;
 import io.hhplus.tdd.point.UserPoint;
@@ -57,14 +58,14 @@ public class PointServiceImpl implements PointService{
 
         // user 를 찾지 못할 경우 예외처리
         UserPoint user = getUser(userId);
-        // 최대 충전 포인트
-        long MAX_POINT = 1000000L;
+
         if (amount <= 0) throw new MinusPointChargeFailedException();
 
-        if (amount > MAX_POINT) throw new InvalidOverPointAmountException();
+        // 포인트 충전 범위 확인
+        if (amount > PointConstants.MAX_POINT) throw new InvalidOverPointAmountException();
 
         long point = user.point() + amount;
-        if (point > MAX_POINT) throw new OverPointChargeFailedException();
+        if (point > PointConstants.MAX_POINT) throw new OverPointChargeFailedException();
 
         // user point 충전
         UserPoint chargeUserPoint = userPointTable.insertOrUpdate(user.id(), point);
