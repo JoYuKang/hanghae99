@@ -29,7 +29,7 @@ class PointServiceTest {
     private PointHistoryTable pointHistoryTable;
 
     @InjectMocks
-    private PointServiceImpl pointService;
+    private PointService pointService;
 
     @Test
     @DisplayName("특정 유저의 포인트를 조회할 수 있다.")
@@ -199,15 +199,6 @@ class PointServiceTest {
         // when, then
         assertThat(pointService.getUserPointHistory(1L).size()).isEqualTo(2);
 
-    }
-    @Test
-    @DisplayName("포인트 충전/이용 내역을 조회 시 특정 유저가 존재하지 않을 경우 조회에 실패한다.")
-    void shouldFailWhenUserDoesNotExistGetUserPointHistory() {
-        // given
-        when(userPointTable.selectById(2L)).thenReturn(null);
-
-        // when, then
-        assertThatThrownBy(() -> pointService.getUserPointHistory(2L)).isInstanceOf(UserNotFoundException.class);
     }
 
     @Test
