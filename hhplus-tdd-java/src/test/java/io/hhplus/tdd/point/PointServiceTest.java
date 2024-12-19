@@ -45,7 +45,7 @@ class PointServiceTest {
 
     @Test
     @DisplayName("잘못된 ID 값을 받을 경우 유저 조회에 실패한다.")
-    void shouldFailWhenUserIdIsInvalid() {
+    void shouldFailWhenInvalidUserIdIs() {
         // given
         long invalidUserId = -1L;
 
@@ -54,7 +54,7 @@ class PointServiceTest {
     }
 
     @Test
-    @DisplayName("존재하지 않는 ID 값을 받을 경우 유저 조회에 실패한다.")
+    @DisplayName("유효하지 않은 유저 ID가 입력되면 유저 조회에 실패한다.")
     void shouldFailWhenUserNotFound() {
         // given
         long invalidUserId = 1L;
@@ -91,7 +91,7 @@ class PointServiceTest {
     }
 
     @Test
-    @DisplayName("포인트 충전 시 잘못된 유저 ID일 경우 충전에 실패한다.")
+    @DisplayName("포인트 충전 시 유효하지 않은 유저 ID가 입력되면 충전이 실패한다.")
     void shouldFailWhenUserInvalidUserIdChargePoint() {
 
         // when, then
@@ -99,7 +99,7 @@ class PointServiceTest {
     }
 
     @Test
-    @DisplayName("포인트 충전 시에 결과값이 1_000_000원을 초과할 경우 포인트를 충전할 수 없다.")
+    @DisplayName("포인트 충전 시에 결과값이 1_000_000원을 초과하면 포인트를 충전에 실패한다.")
     void shouldFailWhenOverChargeUserPoints() {
         // given
         long userId = 1L;
@@ -111,7 +111,7 @@ class PointServiceTest {
     }
 
     @Test
-    @DisplayName("충전 포인트가 1_000_000원을 초과할 경우 포인트를 충전할 수 없다.")
+    @DisplayName("충전 포인트가 1_000_000원을 초과하면 포인트를 충전에 실패한다.")
     void shouldFailWhenOverChargeAmount() {
         // given
         long userId = 1L;
@@ -123,7 +123,7 @@ class PointServiceTest {
     }
 
     @Test
-    @DisplayName("충전 포인트 0원 미만일 경우 포인트를 충전할 수 없다.")
+    @DisplayName("충전 포인트가 0원 미만이면 포인트를 충전에 실패한다.")
     void shouldFailWhenChargeUserMinusPoints() {
         // given
         long userId = 1L;
@@ -145,8 +145,6 @@ class PointServiceTest {
         // when
         when(userPointTable.selectById(userId)).thenReturn(new UserPoint(userId, amount, System.currentTimeMillis()));
         when(userPointTable.insertOrUpdate(userId, amount - spendAmount)).thenReturn(new UserPoint(userId, amount - spendAmount, System.currentTimeMillis()));
-
-        // when
         UserPoint userPoint = pointService.spendUserPoints(userId, spendAmount);
 
         // then
@@ -154,7 +152,7 @@ class PointServiceTest {
     }
 
     @Test
-    @DisplayName("포인트 충전 시 특정 유저가 존재하지 않을 경우 충전에 실패한다.")
+    @DisplayName("포인트 사용 시 특정 유저가 존재하지 않을 경우 충전에 실패한다.")
     void shouldFailWhenUserDoesNotExistGetUserSpendPoint() {
         // given
         when(userPointTable.selectById(2L)).thenReturn(null);
@@ -164,7 +162,7 @@ class PointServiceTest {
     }
 
     @Test
-    @DisplayName("포인트 충전 시 잘못된 유저 ID일 경우 충전에 실패한다.")
+    @DisplayName("포인트 사용 시 유효하지 않은 유저 ID가 입력되면 충전이 실패한다.")
     void shouldFailWhenUserInvalidUserIdSpendPoint() {
 
         // when, then
@@ -172,7 +170,7 @@ class PointServiceTest {
     }
 
     @Test
-    @DisplayName("특정 유저가 가진 포인트 이상의 포인트를 사용할 수 없다.")
+    @DisplayName("특정 유저가 가진 포인트 이상의 포인트를 사용하면 사용에 실패한다.")
     void shouldFailWhenSpentUserOverPoints() {
         // given
         long userId = 1L;
@@ -214,7 +212,7 @@ class PointServiceTest {
     }
 
     @Test
-    @DisplayName("포인트 충전/이용 내역을 조회 시 잘못된 유저 ID일 경우 조회에 실패한다.")
+    @DisplayName("포인트 충전/이용 내역을 조회 시 유효하지 않은 유저 ID가 입력되면 충전이 실패한다.")
     void shouldFailWhenUserInvalidUserIdPointHistory() {
 
         // when, then
