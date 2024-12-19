@@ -3,7 +3,6 @@ package io.hhplus.tdd.point;
 import io.hhplus.tdd.database.PointHistoryTable;
 import io.hhplus.tdd.database.UserPointTable;
 import io.hhplus.tdd.exception.*;
-import io.hhplus.tdd.point.service.PointServiceImpl;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -58,7 +57,7 @@ class PointServiceTest {
     void shouldFailWhenUserNotFound() {
         // given
         long invalidUserId = 1L;
-
+        when(userPointTable.selectById(invalidUserId)).thenReturn(null);
         // when, then
         assertThatThrownBy(() -> pointService.getUserPoints(invalidUserId)).isInstanceOf(UserNotFoundException.class);
     }

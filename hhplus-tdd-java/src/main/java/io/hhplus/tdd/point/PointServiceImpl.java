@@ -1,29 +1,28 @@
-package io.hhplus.tdd.point.service;
+package io.hhplus.tdd.point;
 
 import io.hhplus.tdd.database.PointHistoryTable;
 import io.hhplus.tdd.database.UserPointTable;
 import io.hhplus.tdd.exception.*;
-import io.hhplus.tdd.point.PointConstants;
-import io.hhplus.tdd.point.PointHistory;
-import io.hhplus.tdd.point.TransactionType;
-import io.hhplus.tdd.point.UserPoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
-import java.util.List;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PointServiceImpl implements PointService{
+public class PointServiceImpl {
 
     private final UserPointTable userPointTable;
     private final PointHistoryTable pointHistoryTable;
+
     private final ConcurrentHashMap<Long, Lock> locks = new ConcurrentHashMap<>();
 
     /**
@@ -31,7 +30,6 @@ public class PointServiceImpl implements PointService{
      * @param userId 조회할 유저의 ID
      * @return user point
      */
-    @Override
     public UserPoint getUserPoints(long userId){
         return pointProcess(userId, userPoint -> userPoint);
     }
@@ -42,7 +40,6 @@ public class PointServiceImpl implements PointService{
      * @param userId 조회할 유저의 ID
      * @return user point history
      */
-    @Override
     public List<PointHistory> getUserPointHistory(long userId){
 
         return pointHistoryProcess(userId, userPoint -> pointHistoryTable.selectAllByUserId(userPoint.id()));
@@ -57,7 +54,6 @@ public class PointServiceImpl implements PointService{
      * @throws InvalidOverPointAmountException 충전 amount가 1,000,000원 이상 경우
      * @throws OverPointChargeFailedException 충전된 point가 1,000,000원 이상일 경우
      */
-    @Override
     public UserPoint chargeUserPoints(long userId, long amount){
 
 
@@ -89,7 +85,6 @@ public class PointServiceImpl implements PointService{
      * @throws MinusPointSpendFailedException amount 가 음수일 경우
      * @throws OverPointSpendFailedException 금액 사용 후 point가 0원 미만일 경우
      */
-    @Override
     public UserPoint spendUserPoints(long userId, long amount){
 
         // user 를 찾지 못할 경우 예외처리
@@ -132,7 +127,6 @@ public class PointServiceImpl implements PointService{
     private UserPoint pointProcess(long userId, Function<UserPoint, UserPoint> operation) {
         // 불필요한 Lock 객체 생성 전 예외처리
         if (userId < 0) throw new InvalidUserIdException();
-
         final Lock lock = locks.computeIfAbsent(userId, id -> new ReentrantLock(true));
 
         lock.lock();
