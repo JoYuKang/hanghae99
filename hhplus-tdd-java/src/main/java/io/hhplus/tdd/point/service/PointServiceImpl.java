@@ -10,6 +10,10 @@ import io.hhplus.tdd.point.UserPoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 
 import java.util.List;
 
@@ -20,6 +24,7 @@ public class PointServiceImpl implements PointService{
 
     private final UserPointTable userPointTable;
     private final PointHistoryTable pointHistoryTable;
+    private final ConcurrentHashMap<Long, Lock> locks = new ConcurrentHashMap<>();
 
     /**
      * 특정 유저의 포인트를 조회
@@ -28,7 +33,7 @@ public class PointServiceImpl implements PointService{
      */
     @Override
     public UserPoint getUserPoints(long userId){
-        return getUser(userId);
+        return pointProcess(userId, userPoint -> userPoint);
     }
 
 
@@ -40,7 +45,7 @@ public class PointServiceImpl implements PointService{
     @Override
     public List<PointHistory> getUserPointHistory(long userId){
 
-        return pointHistoryTable.selectAllByUserId(getUser(userId).id());
+        return pointHistoryProcess(userId, userPoint -> pointHistoryTable.selectAllByUserId(userPoint.id()));
     }
 
     /**
@@ -116,6 +121,58 @@ public class PointServiceImpl implements PointService{
         UserPoint user = userPointTable.selectById(userId);
         if (user == null) throw new UserNotFoundException();
         return user;
+    }
+
+    /**
+     * 특정 유저의 여러 요청을 순서대로 차리
+     * @param userId 조회할 유저의 ID
+     * @param operation UserPoint와 관련된 작업
+     * @return 작업 결과로 반환되는 UserPoint
+     */
+    private UserPoint pointProcess(long userId, Function<UserPoint, UserPoint> operation) {
+        // 불필요한 Lock 객체 생성 전 예외처리
+        if (userId < 0) throw new InvalidUserIdException();
+
+        final Lock lock = locks.computeIfAbsent(userId, id -> new ReentrantLock(true));
+
+        lock.lock();
+        try {
+            // 유효성 검증 및 사용자 조회
+            UserPoint userPoint = userPointTable.selectById(userId);
+            if (userPoint == null) {
+                throw new UserNotFoundException();
+            }
+            return operation.apply(userPoint);
+
+        }finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * 특정 유저의 여러 요청을 순서대로 차리
+     * @param userId 조회할 유저의 ID
+     * @param operation PointHistory 조회 작업
+     * @return 작업 결과로 반환되는 List<PointHistory>
+     */
+    private List<PointHistory> pointHistoryProcess(long userId, Function<UserPoint, List<PointHistory>> operation) {
+        // 불필요한 Lock 객체 생성 전 예외처리
+        if (userId < 0) throw new InvalidUserIdException();
+
+        final Lock lock = locks.computeIfAbsent(userId, id -> new ReentrantLock(true));
+
+        lock.lock();
+        try {
+            // 유효성 검증 및 사용자 조회
+            UserPoint userPoint = userPointTable.selectById(userId);
+            if (userPoint == null) {
+                throw new UserNotFoundException();
+            }
+            return operation.apply(userPoint);
+
+        }finally {
+            lock.unlock();
+        }
     }
 
 
