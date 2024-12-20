@@ -137,8 +137,7 @@ public class PointService {
             if (userPoint == null) {
                 throw new UserNotFoundException();
             }
-            UserPoint updatedPoint = operation.apply(userPoint);
-            return userPointTable.insertOrUpdate(updatedPoint.id(), updatedPoint.point());
+            return operation.apply(userPoint);
 
         }finally {
             lock.unlock();
