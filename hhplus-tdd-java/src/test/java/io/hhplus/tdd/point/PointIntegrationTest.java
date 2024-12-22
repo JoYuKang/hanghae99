@@ -31,7 +31,7 @@ public class PointIntegrationTest {
         for (int i = 0; i < 5; i++) {
             executorService.execute(() -> {
                 try{
-                    pointService.chargeUserPoints(1L, 200000L);
+                    pointService.chargeUserPoints(11L, 200000L);
                 }finally {
                     countDownLatch.countDown();
                 }
@@ -39,14 +39,10 @@ public class PointIntegrationTest {
         }
         countDownLatch.await();
         executorService.shutdown();
-        Long point = pointService.getUserPoints(1L).point();
+        Long point = pointService.getUserPoints(11L).point();
 
         // then
         assertThat(point).isEqualTo(1000000L);
-        List<PointHistory> user1PointHistory = pointService.getUserPointHistory(1L);
-        for (PointHistory history : user1PointHistory) {
-            System.out.println("history >"+history);
-        }
     }
 
     @Test
@@ -100,5 +96,31 @@ public class PointIntegrationTest {
         assertThat(point).isEqualTo(50000L);
     }
 
+    // 여러 유저의 충전 요청을 보냈을 때 모든 요청이 정상적으로 처리된다.
 
+    @Test
+    @DisplayName("여러 유저의 충전 요청을 보냈을 때 모든 요청이 정상적으로 처리된다")
+    void shouldProcessMultiChargeUserPointRequest() throws Exception {
+
+        // given
+        ExecutorService executorService = Executors.newFixedThreadPool(10);
+        CountDownLatch countDownLatch = new CountDownLatch(5);
+        // when
+        for (int i = 0; i < 5; i++) {
+            executorService.execute(() -> {
+                try{
+                    pointService.chargeUserPoints(4L, 20000L);
+                    pointService.chargeUserPoints(5L, 10000L);
+                }finally {
+                    countDownLatch.countDown();
+                }
+            });
+        }
+        countDownLatch.await();
+        executorService.shutdown();
+
+        // then
+        assertThat(pointService.getUserPoints(4L).point()).isEqualTo(100000L);
+        assertThat(pointService.getUserPoints(5L).point()).isEqualTo(50000L);
+    }
 }
